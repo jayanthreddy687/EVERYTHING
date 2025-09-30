@@ -14,8 +14,8 @@ export function ProfileView({ userData, calendarData }: ProfileViewProps) {
   // Safely access nested properties with fallbacks
   const name = userData.name || 'User';
   const age = userData.age || '';
-  const city = userData.location?.home?.address?.split(',')[0] || 'Unknown';
-  const occupation = userData.occupation || 'Unknown';
+  const city = userData.location?.home?.city || 'Unknown';
+  const occupation = userData.profession || userData.occupation || 'Unknown';
 
   return (
     <div className="pb-24">

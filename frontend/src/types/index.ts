@@ -5,14 +5,16 @@
 // User Profile Types
 export interface Location {
   home: {
-    address: string;
+    city: string;
+    country: string;
     coordinates: {
       latitude: number;
       longitude: number;
     };
   };
   work: {
-    address: string;
+    city: string;
+    country: string;
     coordinates: {
       latitude: number;
       longitude: number;
@@ -78,6 +80,7 @@ export interface UserProfile {
   name: string;
   age?: number;
   occupation?: string;
+  profession?: string;
   location: Location;
   spotify: SpotifyData;
   social_media?: SocialMediaData;
