@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 
 /**
- * Utility function to merge class names
+ * Merges Tailwind class names
  */
 export function cn(...inputs: ClassValue[]): string {
   return clsx(inputs);

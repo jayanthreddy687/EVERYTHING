@@ -25,7 +25,7 @@ interface UseAgentInsightsReturn {
 }
 
 /**
- * Custom hook for managing agent insights and analysis
+ * Hook for fetching and managing agent insights
  */
 export function useAgentInsights(
   userData: UserProfile | null,

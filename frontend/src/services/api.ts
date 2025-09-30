@@ -11,7 +11,7 @@ import type {
 } from '../types';
 
 /**
- * API Service layer for backend communication
+ * API service for backend communication
  */
 class ApiService {
   private baseURL: string;
@@ -21,7 +21,7 @@ class ApiService {
   }
 
   /**
-   * Generic fetch wrapper with error handling
+   * Fetch wrapper with error handling
    */
   private async fetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;

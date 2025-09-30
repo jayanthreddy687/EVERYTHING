@@ -9,7 +9,7 @@ interface UseScenariosReturn {
 }
 
 /**
- * Custom hook for managing scenario selection
+ * Hook for managing scenario selection
  */
 export function useScenarios(): UseScenariosReturn {
   const [availableScenarios, setAvailableScenarios] = useState<Scenario[]>([]);
