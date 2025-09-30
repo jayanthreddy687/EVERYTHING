@@ -1,7 +1,4 @@
-"""
-Context Detector - Detects current user situation/scenario
-EXACT copy from original backend/main.py lines 1057-1334
-"""
+"""Context Detector - Figures out what scenario the user is in"""
 import logging
 from typing import Dict, Any
 from datetime import datetime

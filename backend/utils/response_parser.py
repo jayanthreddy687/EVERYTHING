@@ -1,11 +1,9 @@
-"""
-Parse LLM responses into structured insights
-"""
+"""Parses LLM text responses into structured insight objects"""
 from models import AgentInsight
 
 
 class ResponseParser:
-    """Utility class for parsing LLM responses"""
+    """Parses LLM responses into structured data"""
     
     @staticmethod
     def parse_llm_response(

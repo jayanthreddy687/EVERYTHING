@@ -1,7 +1,4 @@
-"""
-Productivity Intelligence Agent - AI-powered productivity optimization
-EXACT copy from original backend/main.py lines 368-443
-"""
+"""Productivity Intelligence - Analyzes work patterns and suggests optimizations"""
 import logging
 import json
 from typing import List

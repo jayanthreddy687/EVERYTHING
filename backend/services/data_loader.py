@@ -1,6 +1,4 @@
-"""
-Data Loader Service - Loads user data from CSV and JSON files
-"""
+"""Data Loader - Loads user data from CSV and JSON files"""
 import json
 import csv
 import logging

@@ -1,6 +1,4 @@
-"""
-Agent Orchestrator - Coordinates all AI agents based on context
-"""
+"""Agent Orchestrator - Runs the right agents for each scenario"""
 import logging
 import asyncio
 from datetime import datetime

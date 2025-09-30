@@ -1,7 +1,4 @@
-"""
-EVERYTHING AI Agent System - Main API Server
-Production-ready FastAPI application with modular architecture
-"""
+"""EVERYTHING AI Agent System - Main API Server"""
 import logging
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException

@@ -1,7 +1,4 @@
-"""
-Wellness Intelligence Agent - AI-powered wellness analysis
-EXACT copy from original backend/main.py lines 260-366
-"""
+"""Wellness Intelligence - Tracks sleep, stress, and health patterns"""
 import logging
 import json
 from typing import List

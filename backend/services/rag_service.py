@@ -1,7 +1,4 @@
-"""
-RAG Service - Vector search for contextual memory
-Uses ChromaDB to retrieve relevant historical context
-"""
+"""RAG Service - Vector search using ChromaDB for contextual memory"""
 import logging
 from typing import List, Dict, Any
 import chromadb

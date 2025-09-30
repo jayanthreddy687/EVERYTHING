@@ -1,7 +1,4 @@
-"""
-Emotional Intelligence Agent - AI-powered emotional state analysis
-EXACT copy from original backend/main.py lines 552-616
-"""
+"""Emotional Intelligence - Reads sentiment from social media activity"""
 import logging
 import json
 from typing import List

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class LLMService:
-    """Handles all LLM API calls"""
+    """LLM service for making API calls to Gemini"""
     
     def __init__(self):
         self.gemini_key = GEMINI_API_KEY

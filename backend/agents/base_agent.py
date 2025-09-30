@@ -1,6 +1,4 @@
-"""
-Base agent class that all agents inherit from
-"""
+"""Base agent class"""
 from abc import ABC, abstractmethod
 from typing import List
 from models import AgentInsight, AnalysisRequest

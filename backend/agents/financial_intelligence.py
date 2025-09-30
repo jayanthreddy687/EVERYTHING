@@ -1,7 +1,4 @@
-"""
-Financial Intelligence Agent - AI-powered financial optimization
-EXACT copy from original backend/main.py lines 618-750
-"""
+"""Financial Intelligence - Finds spending patterns and savings opportunities"""
 import logging
 import json
 from typing import List

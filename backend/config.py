@@ -1,6 +1,4 @@
-"""
-Configuration settings for the EVERYTHING AI Agent System
-"""
+"""Configuration settings"""
 import os
 import logging
 from dotenv import load_dotenv

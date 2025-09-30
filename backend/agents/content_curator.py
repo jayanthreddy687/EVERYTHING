@@ -1,7 +1,4 @@
-"""
-Content Curator Agent - AI-powered music and content recommendations
-EXACT copy from original backend/main.py
-"""
+"""Content Curator - Picks the right music for the moment"""
 import logging
 import json
 from typing import List

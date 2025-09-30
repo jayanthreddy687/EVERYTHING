@@ -1,7 +1,4 @@
-"""
-Context Analyzer Agent - Understands user's current context using AI
-EXACT copy from original backend/main.py lines 151-258
-"""
+"""Context Analyzer Agent - Figures out what you're doing based on location, time, and calendar"""
 import logging
 import json
 from typing import List

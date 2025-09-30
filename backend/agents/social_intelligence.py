@@ -1,7 +1,4 @@
-"""
-Social Intelligence Agent - AI-powered social context and relationship management
-EXACT copy from original backend/main.py lines 445-550
-"""
+"""Social Intelligence - Manages connections and suggests social opportunities"""
 import logging
 import json
 from typing import List
