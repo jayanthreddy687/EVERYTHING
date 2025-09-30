@@ -12,6 +12,12 @@ This is a context-aware AI system that analyzes your calendar, location, and hab
 
 The system uses 7 different AI agents, each focused on a specific area like productivity, social life, wellness, or content recommendations. It also has a memory system (RAG) that remembers patterns from your past activities to make better suggestions.
 
+## 📹 Demo Video
+
+![EVERYTHING Demo](EVERYTHING%20DEMO.gif)
+
+Watch the system in action with explaination: [View Demo Video Here](https://drive.google.com/file/d/13RpKVrKsZT4EiKb8lo-qYfFEL87EEEx9/view?usp=drive_link)
+
 ## Main Features
 
 **7 AI Agents** - Each one handles a different aspect of your life:
