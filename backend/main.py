@@ -86,21 +86,19 @@ try:
     
     # Get stats
     stats = orchestrator.rag.get_stats()
-    logger.info(f"✅ RAG indexing complete:")
-    logger.info(f"   • Calendar events: {stats['calendar_events']}")
-    logger.info(f"   • Location points: {stats['locations']}")
+    logger.info(f"RAG indexed: {stats['calendar_events']} events, {stats['locations']} locations")
 except Exception as e:
-    logger.error(f"❌ RAG indexing failed: {e}")
-    logger.warning("   System will continue without RAG capabilities")
+    logger.error(f"RAG indexing failed: {e}")
+    logger.warning("System will continue without RAG capabilities")
 
 logger.info("=" * 70)
-logger.info(f"🤖 {API_TITLE} v{API_VERSION}")
+logger.info(f"🚀 {API_TITLE} v{API_VERSION}")
 logger.info("=" * 70)
-logger.info(f"✅ {len(orchestrator.agents)} autonomous agents loaded:")
+logger.info(f"{len(orchestrator.agents)} agents loaded:")
 for agent in orchestrator.agents:
     logger.info(f"   • {agent.name}")
 logger.info("")
-logger.info(f"🧠 LLM Status: {'✅ ENABLED' if orchestrator.llm.use_llm else '⚠️  FALLBACK MODE'}")
+logger.info(f"LLM: {'ENABLED' if orchestrator.llm.use_llm else 'FALLBACK MODE'}")
 if not orchestrator.llm.use_llm:
     logger.warning("   Set GEMINI_API_KEY to enable real LLM intelligence")
 logger.info("=" * 70)
@@ -134,27 +132,14 @@ async def analyze(request: AnalysisRequest):
     
     logger.info("")
     logger.info("=" * 70)
-    logger.info("📥 NEW REQUEST: /analyze")
-    logger.info("=" * 70)
-    logger.info(f"   User: {request.user_data.get('name', 'Unknown')}")
-    logger.info(f"   Context Type: {request.current_context.get('context_type', 'Unknown')}")
-    logger.info(f"   Location: {request.current_context.get('location', {}).get('name', 'Unknown')}")
-    logger.info("")
+    logger.info(f"Analyze request from {request.user_data.get('name', 'Unknown')}")
     
     try:
         result = await orchestrator.orchestrate(request)
-        
-        logger.info("✅ REQUEST COMPLETED SUCCESSFULLY")
-        logger.info(f"   Insights returned: {len(result['insights'])}")
-        logger.info("=" * 70)
-        logger.info("")
-        
+        logger.info(f"Returned {len(result['insights'])} insights")
         return result
     except Exception as e:
-        logger.error("=" * 70)
-        logger.error(f"❌ REQUEST FAILED: {str(e)}")
-        logger.error("=" * 70)
-        logger.error("")
+        logger.error(f"Analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -343,7 +328,7 @@ async def record_insight_feedback(feedback: Dict[str, Any]):
         # Re-raise HTTP exceptions as-is (e.g., 400 Bad Request)
         raise
     except Exception as e:
-        logger.error(f"❌ Failed to record feedback: {str(e)}")
+        logger.error(f"Failed to record feedback: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -383,42 +368,33 @@ def get_onboarding_status():
         else:
             return OnboardingStatus(completed=False, preferences=None)
     except Exception as e:
-        logger.error(f"❌ Failed to check onboarding status: {e}")
+        logger.error(f"Failed to check onboarding status: {e}")
         return OnboardingStatus(completed=False, preferences=None)
 
 
 @app.post("/onboarding/voice-step", tags=["Onboarding"])
 async def voice_onboarding_step(request: VoiceOnboardingRequest):
-    """
-    Process one step of voice onboarding conversation.
-    Uses Gemini to intelligently ask follow-up questions and extract preferences.
-    """
-    logger.info("🎙️ Voice onboarding step received")
-    logger.info(f"   Conversation history: {len(request.conversation_history)} messages")
-    logger.info(f"   User answer: {request.current_answer[:100]}...")
+    """Process one step of voice onboarding conversation"""
+    logger.info(f"Voice onboarding step: {len(request.conversation_history)} messages in history")
     
     try:
         # Count user responses (not system messages)
         user_responses = [msg for msg in request.conversation_history if msg.role == "user"]
         num_user_responses = len(user_responses)
         
-        logger.info(f"   User has responded {num_user_responses} times")
+        # Force completion after 4 responses - AI tends to chat forever
+        force_complete = num_user_responses >= 4
         
-        # Force completion after 4 user responses (max 5 questions including this one)
-        force_complete = num_user_responses >= 5
-        
-        # Build conversation context for Gemini
         conversation_text = "\n".join([
             f"{msg.role.upper()}: {msg.text}" 
             for msg in request.conversation_history
         ])
         
-        # Intelligent prompt for Gemini
         completion_directive = ""
         if force_complete:
-            completion_directive = "\n\n⚠️ IMPORTANT: This is the final question. You MUST output ONBOARDING_COMPLETE now. The user has already provided enough information."
+            completion_directive = "\n\nIMPORTANT: This is the final question. Output ONBOARDING_COMPLETE now."
         elif num_user_responses >= 2:
-            completion_directive = "\n\n⚠️ You've asked several questions already. If the user has mentioned their main priorities, complete the onboarding by outputting ONBOARDING_COMPLETE."
+            completion_directive = "\n\nYou've asked several questions. If the user has mentioned their priorities, complete the onboarding."
         
         prompt = f"""You are an onboarding assistant for EVERYTHING AI - a personal AI system with 7 specialized agents.
 
@@ -448,10 +424,7 @@ PREFERENCES: {{"priorities": ["work", "wellness", etc], "work_stress": ["meeting
 NEXT_QUESTION: ONBOARDING_COMPLETE OR [ONE specific follow-up question about what they just mentioned]
 REASONING: [Why completing OR why this ONE follow-up is needed]"""
 
-        # Get Gemini's response
         response = await orchestrator.llm.analyze(prompt)
-        
-        logger.debug(f"   Gemini response: {response[:200]}...")
         
         # Parse response
         analysis = ""
@@ -476,24 +449,17 @@ REASONING: [Why completing OR why this ONE follow-up is needed]"""
                     next_question = "ONBOARDING_COMPLETE"
             elif line.startswith("REASONING:"):
                 reasoning = line.replace("REASONING:", "").strip()
-                logger.info(f"   Reasoning: {reasoning}")
         
-        # If no next question was parsed, generate a default
         if not next_question:
             next_question = "Tell me more about what you'd like help with."
         
-        # HARD LIMIT: Force completion after 4 user responses
+        # Hard limit - force completion
         if force_complete and not is_complete:
-            logger.info("   ⚠️ FORCING COMPLETION - Maximum questions reached")
+            logger.info("Forcing onboarding completion - max questions reached")
             is_complete = True
             next_question = "ONBOARDING_COMPLETE"
             if not analysis:
                 analysis = "User has provided sufficient information about their priorities"
-        
-        logger.info(f"   Analysis: {analysis}")
-        logger.info(f"   Preferences extracted: {preferences}")
-        logger.info(f"   Next question: {next_question}")
-        logger.info(f"   Complete: {is_complete}")
         
         return VoiceOnboardingResponse(
             next_question=next_question,
@@ -503,16 +469,14 @@ REASONING: [Why completing OR why this ONE follow-up is needed]"""
         )
     
     except Exception as e:
-        logger.error(f"❌ Voice onboarding step failed: {e}")
+        logger.error(f"Voice onboarding failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/onboarding/save", tags=["Onboarding"])
 async def save_onboarding(preferences: OnboardingPreferences):
-    """
-    Save user onboarding preferences and calculate agent weights.
-    """
-    logger.info("💾 Saving onboarding preferences...")
+    """Save user onboarding preferences and calculate agent weights"""
+    logger.info("Saving onboarding preferences...")
     
     try:
         # Calculate agent weights based on priorities
@@ -548,9 +512,7 @@ async def save_onboarding(preferences: OnboardingPreferences):
         with open(ONBOARDING_FILE, 'w') as f:
             json.dump(preferences.dict(), f, indent=2)
         
-        logger.info("✅ Onboarding preferences saved")
-        logger.info(f"   Priorities: {preferences.priorities}")
-        logger.info(f"   Agent weights: {agent_weights}")
+        logger.info(f"Onboarding saved: {len(preferences.priorities)} priorities, weights calculated")
         
         return {
             "status": "saved",
@@ -559,19 +521,20 @@ async def save_onboarding(preferences: OnboardingPreferences):
         }
     
     except Exception as e:
-        logger.error(f"❌ Failed to save onboarding: {e}")
+        logger.error(f"Failed to save onboarding: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/onboarding/reset", tags=["Onboarding"])
 def reset_onboarding():
     """Reset onboarding (for testing)"""
+    logger.info("Resetting onboarding...")
     try:
         if ONBOARDING_FILE.exists():
             os.remove(ONBOARDING_FILE)
         return {"status": "reset", "message": "Onboarding has been reset"}
     except Exception as e:
-        logger.error(f"❌ Failed to reset onboarding: {e}")
+        logger.error(f"Failed to reset onboarding: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -13,9 +13,6 @@ interface VoiceOnboardingViewProps {
   onComplete: () => void;
 }
 
-/**
- * Voice Onboarding - Conversational AI onboarding with speech recognition
- */
 export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,9 +26,8 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
   const recognitionRef = useRef<any>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize speech recognition
+  // Speech API setup - browser support is spotty, but works in Chrome/Safari
   useEffect(() => {
-    // Check if browser supports Web Speech API
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -50,7 +46,6 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
       
       setTranscript(transcriptText);
       
-      // If final result, process it
       if (result.isFinal) {
         handleUserResponse(transcriptText);
       }
@@ -88,22 +83,16 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation, currentSystemMessage]);
 
-  /**
-   * Start the conversation (requires user interaction)
-   */
   const startConversation = () => {
     setHasStarted(true);
     setError(null);
     
-    // Now we can speak (user interaction satisfied)
+    // Delay a bit before speaking
     setTimeout(() => {
       speak("Hi! I'm EVERYTHING, your personal AI assistant. Let's get to know each other! What matters most to you these days?");
     }, 300);
   };
 
-  /**
-   * Text-to-Speech: System speaks
-   */
   const speak = (text: string) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.95;
@@ -130,9 +119,6 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
     window.speechSynthesis.speak(utterance);
   };
 
-  /**
-   * Start listening to user
-   */
   const startListening = () => {
     if (!recognitionRef.current) return;
     
@@ -148,9 +134,6 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
     }
   };
 
-  /**
-   * Stop listening
-   */
   const stopListening = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
@@ -158,9 +141,6 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
     setIsListening(false);
   };
 
-  /**
-   * Handle user's spoken response
-   */
   const handleUserResponse = async (userAnswer: string) => {
     if (!userAnswer.trim()) return;
     
@@ -179,7 +159,6 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
     setConversation(updatedConversation);
     
     try {
-      // Send to backend for AI analysis
       const response = await apiService.voiceOnboardingStep({
         conversation_history: updatedConversation,
         current_answer: userAnswer
@@ -195,7 +174,6 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
       
       setIsProcessing(false);
       
-      // Check if onboarding is complete
       if (response.is_complete || response.next_question === 'ONBOARDING_COMPLETE') {
         await completeOnboarding(updatedConversation);
       } else {
@@ -211,9 +189,6 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
     }
   };
 
-  /**
-   * Complete onboarding and save preferences
-   */
   const completeOnboarding = async (finalConversation: ConversationMessage[]) => {
     setIsProcessing(true);
     
@@ -233,10 +208,8 @@ export function VoiceOnboardingView({ onComplete }: VoiceOnboardingViewProps) {
         raw_conversation: finalConversation
       };
       
-      // Save to backend
       await apiService.saveOnboarding(onboardingPreferences);
       
-      // Speak completion message
       const completionMessage = "Perfect! I've got everything I need. EVERYTHING is now personalized just for you. Let me show you your first insights!";
       
       const utterance = new SpeechSynthesisUtterance(completionMessage);

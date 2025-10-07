@@ -52,8 +52,8 @@ class AgentOrchestrator:
         self.agent_weights = self.user_preferences.get("agent_weights", {}) if self.user_preferences else {}
         
         if self.agent_weights:
-            logger.info("✨ User preferences loaded - insights will be personalized")
-            logger.info(f"   Agent weights: {self.agent_weights}")
+            logger.info("User preferences loaded - personalizing insights")
+            logger.debug(f"Agent weights: {self.agent_weights}")
     
     def _load_onboarding_preferences(self) -> Dict[str, Any]:
         """Load user onboarding preferences if available"""
@@ -70,19 +70,15 @@ class AgentOrchestrator:
             
             return {}
         except Exception as e:
-            logger.warning(f"⚠️  Could not load onboarding preferences: {e}")
+            logger.warning(f"Could not load onboarding preferences: {e}")
             return {}
     
     async def orchestrate(self, request: AnalysisRequest) -> Dict[str, Any]:
         """Run context-aware agents (only relevant ones for current situation)"""
         
-        logger.info("=" * 70)
-        logger.info("🚀 CONTEXT-AWARE ORCHESTRATOR STARTING")
-        logger.info("=" * 70)
-        logger.info(f"   User: {request.user_data.get('name', 'Unknown')}")
-        logger.info(f"   Location: {request.current_context.get('location', {}).get('name', 'Unknown')}")
-        logger.info(f"   Calendar Events: {len(request.calendar_events)}")
-        logger.info("")
+        logger.info("=" * 60)
+        logger.info(f"Orchestrator: {request.user_data.get('name', 'Unknown')} | {request.current_context.get('location', {}).get('name', 'Unknown')} | {len(request.calendar_events)} events")
+        logger.info("=" * 60)
         
         start_time = datetime.now()
         
@@ -95,10 +91,9 @@ class AgentOrchestrator:
             if agent_key in self.agent_map:
                 active_agents.append(self.agent_map[agent_key])
         
-        logger.info(f"   📋 Active Agents for this scenario: {len(active_agents)}/{len(self.agent_map)}")
+        logger.info(f"Active agents: {len(active_agents)}/{len(self.agent_map)}")
         for agent in active_agents:
-            logger.info(f"      • {agent.name}")
-        logger.info("")
+            logger.debug(f"  • {agent.name}")
         
         # STEP 3: Run only the relevant agents
         tasks = [agent.analyze(request) for agent in active_agents]
@@ -108,9 +103,9 @@ class AgentOrchestrator:
         for i, result in enumerate(results):
             if isinstance(result, list):
                 all_insights.extend(result)
-                logger.info(f"   ✅ {active_agents[i].name}: {len(result)} insights")
+                logger.debug(f"{active_agents[i].name}: {len(result)} insights")
             elif isinstance(result, Exception):
-                logger.error(f"   ❌ {active_agents[i].name}: {str(result)}")
+                logger.error(f"{active_agents[i].name} failed: {str(result)}")
         
         # STEP 4: Apply user preference weights to insights
         if self.agent_weights:
@@ -129,21 +124,15 @@ class AgentOrchestrator:
                     insight.confidence = min(1.0, insight.confidence * weight)
                     
                     if weight > 1.0:
-                        logger.debug(f"   🎯 Boosted {insight.agent_name} insight: {original_confidence:.2f} → {insight.confidence:.2f}")
+                        logger.debug(f"Boosted {insight.agent_name}: {original_confidence:.2f} → {insight.confidence:.2f}")
         
         # STEP 5: Sort by priority and weighted confidence
         all_insights.sort(key=lambda x: (PRIORITY_MAP.get(x.priority, 2), -x.confidence))
         
         duration = (datetime.now() - start_time).total_seconds()
         
-        logger.info("")
-        logger.info(f"📊 ORCHESTRATION COMPLETE")
-        logger.info(f"   Duration: {duration:.2f}s")
-        logger.info(f"   Scenario: {scenario['type']}")
-        logger.info(f"   Active Agents: {len(active_agents)}")
-        logger.info(f"   Total Insights: {len(all_insights)}")
-        logger.info("=" * 70)
-        logger.info("")
+        logger.info(f"Complete: {duration:.2f}s | {scenario['type']} | {len(active_agents)} agents | {len(all_insights)} insights")
+        logger.info("=" * 60)
         
         return {
             "insights": all_insights[:MAX_INSIGHTS_PER_REQUEST],
