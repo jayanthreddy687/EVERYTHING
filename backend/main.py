@@ -18,7 +18,8 @@ from config import (
     CORS_METHODS,
     CORS_HEADERS,
     LOG_LEVEL,
-    LOG_FORMAT
+    LOG_FORMAT,
+    USE_LLM_CONTEXT_DETECTION
 )
 from models import (
     AnalysisRequest,
@@ -64,8 +65,8 @@ app.add_middleware(
     allow_headers=CORS_HEADERS,
 )
 
-# Initialize orchestrator
-orchestrator = AgentOrchestrator()
+# Initialize orchestrator with LLM-based context detection
+orchestrator = AgentOrchestrator(use_llm_detection=USE_LLM_CONTEXT_DETECTION)
 
 # Onboarding data path
 if os.path.exists("/app/data"):

@@ -1,4 +1,3 @@
-"""Agent Orchestrator - Runs the right agents for each scenario"""
 import logging
 import asyncio
 import json
@@ -9,7 +8,7 @@ from typing import Dict, Any
 
 from models import AnalysisRequest
 from services import LLMService, RAGService
-from utils import ContextDetector
+from utils import ContextDetector, LLMContextDetector
 from agents import (
     ContextAnalyzerAgent,
     WellnessIntelligenceAgent,
@@ -25,121 +24,96 @@ logger = logging.getLogger(__name__)
 
 
 class AgentOrchestrator:
-    """Coordinates all AI agents based on context"""
-    
-    def __init__(self):
+    def __init__(self, use_llm_detection=True):
         self.llm = LLMService()
-        self.rag = RAGService()  # Initialize RAG service
-        self.context_detector = ContextDetector()
+        self.rag = RAGService()
         
-        # Initialize all agents with names for mapping
-        # Pass RAG service to agents that need contextual memory
+        if use_llm_detection and self.llm.use_llm:
+            self.context_detector = LLMContextDetector(self.llm)
+            logger.info("Using LLM context detection")
+        else:
+            self.context_detector = ContextDetector()
+            logger.info("Using rule-based detection")
+        
         self.agent_map = {
-            "context": ContextAnalyzerAgent(self.llm, self.rag),  # Context analyzer uses RAG
+            "context": ContextAnalyzerAgent(self.llm, self.rag),
             "wellness": WellnessIntelligenceAgent(self.llm),
-            "productivity": ProductivityIntelligenceAgent(self.llm, self.rag),  # Productivity uses RAG for work patterns
+            "productivity": ProductivityIntelligenceAgent(self.llm, self.rag),
             "social": SocialIntelligenceAgent(self.llm),
             "emotional": EmotionalIntelligenceAgent(self.llm),
             "financial": FinancialIntelligenceAgent(self.llm),
             "content": ContentCurationAgent(self.llm)
         }
         
-        # Keep legacy list for compatibility
         self.agents = list(self.agent_map.values())
-        
-        # Load user preferences and agent weights
-        self.user_preferences = self._load_onboarding_preferences()
+        self.user_preferences = self._load_preferences()
         self.agent_weights = self.user_preferences.get("agent_weights", {}) if self.user_preferences else {}
-        
-        if self.agent_weights:
-            logger.info("User preferences loaded - personalizing insights")
-            logger.debug(f"Agent weights: {self.agent_weights}")
     
-    def _load_onboarding_preferences(self) -> Dict[str, Any]:
-        """Load user onboarding preferences if available"""
+    def _load_preferences(self) -> Dict[str, Any]:
         try:
-            # Determine data path
-            if os.path.exists("/app/data"):
-                onboarding_file = Path("/app/data/user_onboarding.json")
-            else:
-                onboarding_file = Path(__file__).parent.parent / "data" / "user_onboarding.json"
+            path = Path("/app/data/user_onboarding.json") if os.path.exists("/app/data") else \
+                   Path(__file__).parent.parent / "data" / "user_onboarding.json"
             
-            if onboarding_file.exists():
-                with open(onboarding_file, 'r') as f:
+            if path.exists():
+                with open(path, 'r') as f:
                     return json.load(f)
-            
             return {}
         except Exception as e:
-            logger.warning(f"Could not load onboarding preferences: {e}")
+            logger.debug(f"No preferences loaded: {e}")
             return {}
     
     async def orchestrate(self, request: AnalysisRequest) -> Dict[str, Any]:
-        """Run context-aware agents (only relevant ones for current situation)"""
+        start = datetime.now()
+        user = request.user_data.get('name', 'User')
+        location = request.current_context.get('location', {}).get('name', 'Unknown')
         
-        logger.info("=" * 60)
-        logger.info(f"Orchestrator: {request.user_data.get('name', 'Unknown')} | {request.current_context.get('location', {}).get('name', 'Unknown')} | {len(request.calendar_events)} events")
-        logger.info("=" * 60)
+        logger.info(f"→ {user} | {location} | {len(request.calendar_events)} events")
         
-        start_time = datetime.now()
+        scenario = await self.context_detector.detect_scenario(request)
         
-        # STEP 1: Detect current scenario
-        scenario = self.context_detector.detect_scenario(request)
+        active_agents = [
+            self.agent_map[key] for key in scenario["triggers"] 
+            if key in self.agent_map
+        ]
         
-        # STEP 2: Select only relevant agents for this scenario
-        active_agents = []
-        for agent_key in scenario["triggers"]:
-            if agent_key in self.agent_map:
-                active_agents.append(self.agent_map[agent_key])
+        logger.info(f"Running {len(active_agents)}/{len(self.agent_map)} agents")
         
-        logger.info(f"Active agents: {len(active_agents)}/{len(self.agent_map)}")
-        for agent in active_agents:
-            logger.debug(f"  • {agent.name}")
-        
-        # STEP 3: Run only the relevant agents
         tasks = [agent.analyze(request) for agent in active_agents]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        all_insights = []
+        insights = []
         for i, result in enumerate(results):
             if isinstance(result, list):
-                all_insights.extend(result)
-                logger.debug(f"{active_agents[i].name}: {len(result)} insights")
+                insights.extend(result)
             elif isinstance(result, Exception):
-                logger.error(f"{active_agents[i].name} failed: {str(result)}")
+                logger.error(f"{active_agents[i].name} error: {result}")
         
-        # STEP 4: Apply user preference weights to insights
         if self.agent_weights:
-            for insight in all_insights:
-                # Find which agent type this insight came from
-                agent_type = None
-                for key, agent in self.agent_map.items():
-                    if agent.name == insight.agent_name:
-                        agent_type = key
-                        break
-                
-                # Apply weight multiplier to confidence
-                if agent_type and agent_type in self.agent_weights:
-                    weight = self.agent_weights[agent_type]
-                    original_confidence = insight.confidence
-                    insight.confidence = min(1.0, insight.confidence * weight)
-                    
-                    if weight > 1.0:
-                        logger.debug(f"Boosted {insight.agent_name}: {original_confidence:.2f} → {insight.confidence:.2f}")
+            insights = self._apply_weights(insights)
         
-        # STEP 5: Sort by priority and weighted confidence
-        all_insights.sort(key=lambda x: (PRIORITY_MAP.get(x.priority, 2), -x.confidence))
+        insights.sort(key=lambda x: (PRIORITY_MAP.get(x.priority, 2), -x.confidence))
         
-        duration = (datetime.now() - start_time).total_seconds()
-        
-        logger.info(f"Complete: {duration:.2f}s | {scenario['type']} | {len(active_agents)} agents | {len(all_insights)} insights")
-        logger.info("=" * 60)
+        duration = (datetime.now() - start).total_seconds()
+        logger.info(f"✓ {duration:.2f}s | {scenario['type']} | {len(insights)} insights")
         
         return {
-            "insights": all_insights[:MAX_INSIGHTS_PER_REQUEST],
+            "insights": insights[:MAX_INSIGHTS_PER_REQUEST],
             "scenario": scenario,
             "active_agents": len(active_agents),
             "total_agents": len(self.agent_map),
-            "insights_generated": len(all_insights),
+            "insights_generated": len(insights),
             "using_llm": self.llm.use_llm,
             "timestamp": datetime.now().isoformat()
         }
+    
+    def _apply_weights(self, insights):
+        for insight in insights:
+            agent_type = next(
+                (key for key, agent in self.agent_map.items() 
+                 if agent.name == insight.agent_name),
+                None
+            )
+            if agent_type and agent_type in self.agent_weights:
+                weight = self.agent_weights[agent_type]
+                insight.confidence = min(1.0, insight.confidence * weight)
+        return insights
