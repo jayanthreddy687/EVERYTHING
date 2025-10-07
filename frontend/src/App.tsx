@@ -11,6 +11,7 @@ import { ErrorBanner } from './components/ErrorBanner';
 import { useAgentInsights } from './hooks/useAgentInsights';
 import { useScenarios } from './hooks/useScenarios';
 import { useUserData } from './hooks/useUserData';
+import { useOnboarding } from './hooks/useOnboarding';
 import { apiService } from './services/api';
 import { APP_CONFIG } from './constants/config';
 import type { TabType } from './constants/config';
@@ -19,10 +20,13 @@ import type { FeedbackAction } from './types';
 function App() {
   const [activeTab, setActiveTab] = useState<TabType>(APP_CONFIG.DEFAULT_TAB as TabType);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
-  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
-  // Fetch user data and calendar from backend
+  const { 
+    isComplete: onboardingComplete, 
+    isChecking: checkingOnboarding,
+    refreshStatus: refreshOnboardingStatus 
+  } = useOnboarding();
+
   const { 
     userData, 
     calendarData, 
@@ -30,7 +34,6 @@ function App() {
     error: dataError 
   } = useUserData();
 
-  // Custom hooks for state management
   const { availableScenarios, selectedScenario, selectScenario } = useScenarios();
   const {
     suggestions,
@@ -41,24 +44,6 @@ function App() {
     fetchInsights
   } = useAgentInsights(userData, calendarData);
 
-  // Check onboarding status on mount
-  useEffect(() => {
-    async function checkOnboarding() {
-      try {
-        const status = await apiService.getOnboardingStatus();
-        setOnboardingComplete(status.completed);
-      } catch (error) {
-        console.error('Failed to check onboarding status:', error);
-        // Default to completed if check fails (graceful degradation)
-        setOnboardingComplete(true);
-      } finally {
-        setCheckingOnboarding(false);
-      }
-    }
-    checkOnboarding();
-  }, []);
-
-  // Fetch insights when data is loaded and scenario changes
   useEffect(() => {
     if (userData && calendarData.length > 0 && onboardingComplete) {
       fetchInsights(selectedScenario);
@@ -111,7 +96,7 @@ function App() {
     await recordFeedback(item, 'clicked');
     
     // Show user confirmation
-    alert(`✓ ${item.action} accepted!\n\n${item.title}\n${item.message}`);
+    alert(`${item.action} accepted!\n\n${item.title}\n${item.message}`);
   }
 
   // Handle insight dismissal
@@ -125,10 +110,8 @@ function App() {
     await recordFeedback(item, 'dismissed');
   }
 
-  // Handle onboarding completion
-  function handleOnboardingComplete() {
-    setOnboardingComplete(true);
-    // Trigger insights fetch after onboarding
+  async function handleOnboardingComplete() {
+    await refreshOnboardingStatus();
     if (userData && calendarData.length > 0) {
       fetchInsights(selectedScenario);
     }
