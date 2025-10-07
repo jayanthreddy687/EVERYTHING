@@ -109,6 +109,50 @@ class ApiService {
   }
 
   /**
+   * Check onboarding status
+   */
+  async getOnboardingStatus(): Promise<{ completed: boolean; preferences: any | null }> {
+    return this.fetch('/onboarding/status');
+  }
+
+  /**
+   * Send voice onboarding step
+   */
+  async voiceOnboardingStep(request: {
+    conversation_history: Array<{ role: string; text: string; timestamp: string }>;
+    current_answer: string;
+  }): Promise<{
+    next_question: string;
+    analysis: string;
+    preferences_extracted: any;
+    is_complete: boolean;
+  }> {
+    return this.fetch('/onboarding/voice-step', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  /**
+   * Save onboarding preferences
+   */
+  async saveOnboarding(preferences: any): Promise<{ status: string; preferences: any; message: string }> {
+    return this.fetch('/onboarding/save', {
+      method: 'POST',
+      body: JSON.stringify(preferences),
+    });
+  }
+
+  /**
+   * Reset onboarding (for testing)
+   */
+  async resetOnboarding(): Promise<{ status: string; message: string }> {
+    return this.fetch('/onboarding/reset', {
+      method: 'POST',
+    });
+  }
+
+  /**
    * Build analysis request payload
    */
   buildAnalysisRequest(

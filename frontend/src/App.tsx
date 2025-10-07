@@ -5,11 +5,13 @@ import { ScenarioSelector } from './features/scenarios/ScenarioSelector';
 import { NowView } from './features/now/NowView';
 import { AgendaView } from './features/agenda/AgendaView';
 import { ProfileView } from './features/profile/ProfileView';
+import { VoiceOnboardingView } from './features/onboarding/VoiceOnboardingView';
 import { LoadingState } from './components/LoadingState';
 import { ErrorBanner } from './components/ErrorBanner';
 import { useAgentInsights } from './hooks/useAgentInsights';
 import { useScenarios } from './hooks/useScenarios';
 import { useUserData } from './hooks/useUserData';
+import { useOnboarding } from './hooks/useOnboarding';
 import { apiService } from './services/api';
 import { APP_CONFIG } from './constants/config';
 import type { TabType } from './constants/config';
@@ -19,7 +21,12 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabType>(APP_CONFIG.DEFAULT_TAB as TabType);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
-  // Fetch user data and calendar from backend
+  const { 
+    isComplete: onboardingComplete, 
+    isChecking: checkingOnboarding,
+    refreshStatus: refreshOnboardingStatus 
+  } = useOnboarding();
+
   const { 
     userData, 
     calendarData, 
@@ -27,7 +34,6 @@ function App() {
     error: dataError 
   } = useUserData();
 
-  // Custom hooks for state management
   const { availableScenarios, selectedScenario, selectScenario } = useScenarios();
   const {
     suggestions,
@@ -38,12 +44,11 @@ function App() {
     fetchInsights
   } = useAgentInsights(userData, calendarData);
 
-  // Fetch insights when data is loaded and scenario changes
   useEffect(() => {
-    if (userData && calendarData.length > 0) {
+    if (userData && calendarData.length > 0 && onboardingComplete) {
       fetchInsights(selectedScenario);
     }
-  }, [selectedScenario, userData, calendarData, fetchInsights]);
+  }, [selectedScenario, userData, calendarData, onboardingComplete, fetchInsights]);
 
   // Handle scenario selection
   function handleScenarioSelect(scenarioId: string | null): void {
@@ -91,7 +96,7 @@ function App() {
     await recordFeedback(item, 'clicked');
     
     // Show user confirmation
-    alert(`✓ ${item.action} accepted!\n\n${item.title}\n${item.message}`);
+    alert(`${item.action} accepted!\n\n${item.title}\n${item.message}`);
   }
 
   // Handle insight dismissal
@@ -103,6 +108,27 @@ function App() {
   }): Promise<void> {
     // Record negative feedback
     await recordFeedback(item, 'dismissed');
+  }
+
+  async function handleOnboardingComplete() {
+    await refreshOnboardingStatus();
+    if (userData && calendarData.length > 0) {
+      fetchInsights(selectedScenario);
+    }
+  }
+
+  // Show loading state while checking onboarding
+  if (checkingOnboarding) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white p-6 flex items-center justify-center">
+        <LoadingState message="Loading..." />
+      </div>
+    );
+  }
+
+  // Show voice onboarding if not completed
+  if (onboardingComplete === false) {
+    return <VoiceOnboardingView onComplete={handleOnboardingComplete} />;
   }
 
   // Show loading state while fetching user data

@@ -1,12 +1,14 @@
-"""Agent Orchestrator - Runs the right agents for each scenario"""
 import logging
 import asyncio
+import json
+import os
+from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
 from models import AnalysisRequest
 from services import LLMService, RAGService
-from utils import ContextDetector
+from utils import ContextDetector, LLMContextDetector
 from agents import (
     ContextAnalyzerAgent,
     WellnessIntelligenceAgent,
@@ -22,87 +24,96 @@ logger = logging.getLogger(__name__)
 
 
 class AgentOrchestrator:
-    """Coordinates all AI agents based on context"""
-    
-    def __init__(self):
+    def __init__(self, use_llm_detection=True):
         self.llm = LLMService()
-        self.rag = RAGService()  # Initialize RAG service
-        self.context_detector = ContextDetector()
+        self.rag = RAGService()
         
-        # Initialize all agents with names for mapping
-        # Pass RAG service to agents that need contextual memory
+        if use_llm_detection and self.llm.use_llm:
+            self.context_detector = LLMContextDetector(self.llm)
+            logger.info("Using LLM context detection")
+        else:
+            self.context_detector = ContextDetector()
+            logger.info("Using rule-based detection")
+        
         self.agent_map = {
-            "context": ContextAnalyzerAgent(self.llm, self.rag),  # Context analyzer uses RAG
+            "context": ContextAnalyzerAgent(self.llm, self.rag),
             "wellness": WellnessIntelligenceAgent(self.llm),
-            "productivity": ProductivityIntelligenceAgent(self.llm, self.rag),  # Productivity uses RAG for work patterns
+            "productivity": ProductivityIntelligenceAgent(self.llm, self.rag),
             "social": SocialIntelligenceAgent(self.llm),
             "emotional": EmotionalIntelligenceAgent(self.llm),
             "financial": FinancialIntelligenceAgent(self.llm),
             "content": ContentCurationAgent(self.llm)
         }
         
-        # Keep legacy list for compatibility
         self.agents = list(self.agent_map.values())
+        self.user_preferences = self._load_preferences()
+        self.agent_weights = self.user_preferences.get("agent_weights", {}) if self.user_preferences else {}
+    
+    def _load_preferences(self) -> Dict[str, Any]:
+        try:
+            path = Path("/app/data/user_onboarding.json") if os.path.exists("/app/data") else \
+                   Path(__file__).parent.parent / "data" / "user_onboarding.json"
+            
+            if path.exists():
+                with open(path, 'r') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            logger.debug(f"No preferences loaded: {e}")
+            return {}
     
     async def orchestrate(self, request: AnalysisRequest) -> Dict[str, Any]:
-        """Run context-aware agents (only relevant ones for current situation)"""
+        start = datetime.now()
+        user = request.user_data.get('name', 'User')
+        location = request.current_context.get('location', {}).get('name', 'Unknown')
         
-        logger.info("=" * 70)
-        logger.info("🚀 CONTEXT-AWARE ORCHESTRATOR STARTING")
-        logger.info("=" * 70)
-        logger.info(f"   User: {request.user_data.get('name', 'Unknown')}")
-        logger.info(f"   Location: {request.current_context.get('location', {}).get('name', 'Unknown')}")
-        logger.info(f"   Calendar Events: {len(request.calendar_events)}")
-        logger.info("")
+        logger.info(f"→ {user} | {location} | {len(request.calendar_events)} events")
         
-        start_time = datetime.now()
+        scenario = await self.context_detector.detect_scenario(request)
         
-        # STEP 1: Detect current scenario
-        scenario = self.context_detector.detect_scenario(request)
+        active_agents = [
+            self.agent_map[key] for key in scenario["triggers"] 
+            if key in self.agent_map
+        ]
         
-        # STEP 2: Select only relevant agents for this scenario
-        active_agents = []
-        for agent_key in scenario["triggers"]:
-            if agent_key in self.agent_map:
-                active_agents.append(self.agent_map[agent_key])
+        logger.info(f"Running {len(active_agents)}/{len(self.agent_map)} agents")
         
-        logger.info(f"   📋 Active Agents for this scenario: {len(active_agents)}/{len(self.agent_map)}")
-        for agent in active_agents:
-            logger.info(f"      • {agent.name}")
-        logger.info("")
-        
-        # STEP 3: Run only the relevant agents
         tasks = [agent.analyze(request) for agent in active_agents]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        all_insights = []
+        insights = []
         for i, result in enumerate(results):
             if isinstance(result, list):
-                all_insights.extend(result)
-                logger.info(f"   ✅ {active_agents[i].name}: {len(result)} insights")
+                insights.extend(result)
             elif isinstance(result, Exception):
-                logger.error(f"   ❌ {active_agents[i].name}: {str(result)}")
+                logger.error(f"{active_agents[i].name} error: {result}")
         
-        # STEP 4: Sort by priority and confidence
-        all_insights.sort(key=lambda x: (PRIORITY_MAP.get(x.priority, 2), -x.confidence))
+        if self.agent_weights:
+            insights = self._apply_weights(insights)
         
-        duration = (datetime.now() - start_time).total_seconds()
+        insights.sort(key=lambda x: (PRIORITY_MAP.get(x.priority, 2), -x.confidence))
         
-        logger.info("")
-        logger.info(f"📊 ORCHESTRATION COMPLETE")
-        logger.info(f"   Duration: {duration:.2f}s")
-        logger.info(f"   Scenario: {scenario['type']}")
-        logger.info(f"   Active Agents: {len(active_agents)}")
-        logger.info(f"   Total Insights: {len(all_insights)}")
-        logger.info("=" * 70)
-        logger.info("")
+        duration = (datetime.now() - start).total_seconds()
+        logger.info(f"✓ {duration:.2f}s | {scenario['type']} | {len(insights)} insights")
         
         return {
-            "insights": all_insights[:MAX_INSIGHTS_PER_REQUEST],
+            "insights": insights[:MAX_INSIGHTS_PER_REQUEST],
             "scenario": scenario,
             "active_agents": len(active_agents),
             "total_agents": len(self.agent_map),
-            "insights_generated": len(all_insights),
+            "insights_generated": len(insights),
             "using_llm": self.llm.use_llm,
             "timestamp": datetime.now().isoformat()
         }
+    
+    def _apply_weights(self, insights):
+        for insight in insights:
+            agent_type = next(
+                (key for key, agent in self.agent_map.items() 
+                 if agent.name == insight.agent_name),
+                None
+            )
+            if agent_type and agent_type in self.agent_weights:
+                weight = self.agent_weights[agent_type]
+                insight.confidence = min(1.0, insight.confidence * weight)
+        return insights

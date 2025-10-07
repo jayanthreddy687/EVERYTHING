@@ -20,6 +20,8 @@ Watch the system in action with explaination: [View Demo Video Here](https://dri
 
 ## Main Features
 
+**Voice Onboarding** - First time users get a natural conversation with the AI to personalize the experience. Just speak your preferences and priorities, and the system adapts to what matters to you.
+
 **7 AI Agents** - Each one handles a different aspect of your life:
 - Context Analyzer - figures out what you're doing right now
 - Productivity - helps you work smarter
@@ -29,9 +31,9 @@ Watch the system in action with explaination: [View Demo Video Here](https://dri
 - Wellness - improves sleep and fitness
 - Content Curator - recommends music based on context
 
-**Memory System** - Uses ChromaDB to remember your patterns and learn from feedback
+**Smart Context Detection** - Uses LLM to intelligently predict what you're doing. Instead of hardcoded rules, the AI analyzes your time, location, and calendar to understand your situation.
 
-**Scenario Detection** - Automatically knows if you're commuting, at work, working out, etc.
+**Memory System** - Uses ChromaDB to remember your patterns and learn from feedback
 
 **Feedback Learning** - Gets better over time by learning what suggestions you like
 
@@ -39,17 +41,19 @@ Watch the system in action with explaination: [View Demo Video Here](https://dri
 
 ## How it works
 
-```
-Frontend (React + TypeScript)
-    ↓
-Backend API (FastAPI + Python)
-    ↓
-Agent Orchestrator
-    ↓
-7 Specialized AI Agents
-    ↓
-Google Gemini (for AI) + ChromaDB (for memory)
-```
+### System Flow
+
+![Flow Diagram](flowdiagram.png)
+
+The complete flow from voice onboarding to personalized insights:
+
+1. **Voice Onboarding** - Natural conversation to understand your priorities
+2. **Context Gathering** - System collects time, location, calendar data
+3. **LLM Detection** - AI analyzes situation and predicts scenario
+4. **Agent Selection** - Activates only relevant agents (3-5 out of 7)
+5. **Insight Generation** - Agents query memory, build prompts, call Gemini
+6. **Personalized Results** - Sorted insights displayed with reasoning
+7. **Feedback Loop** - Your interactions improve future recommendations
 
 The system detects what you're doing based on time, location, and calendar. Then it activates only the relevant agents for that situation. Each agent analyzes your data and returns insights, which get sorted by priority.
 
@@ -111,7 +115,19 @@ The script will:
 - App: http://localhost:5173
 - API docs: http://localhost:8000/docs
 
-That's it. The system is now running.
+### 5. Voice Onboarding
+
+When you first open the app, you'll go through a quick voice conversation:
+
+1. Click "Start Voice Conversation" (grant microphone access when prompted)
+2. The AI will ask about your priorities and what matters to you
+3. Just speak naturally - the conversation adapts to your answers
+4. Takes about 2-3 minutes
+5. Your preferences are saved and used to personalize recommendations
+
+Reset onboarding anytime: `./reset_onboarding.sh`
+
+That's it. The system is now running and personalized to you.
 
 ## Manual Setup
 
@@ -150,8 +166,8 @@ backend/
 frontend/
   src/
     components/    - UI components
-    features/      - main views (now, agenda, profile)
-    hooks/         - React hooks for state management
+    features/      - main views (now, agenda, profile, onboarding)
+    hooks/         - React hooks (state, voice, speech)
     services/      - API calls
     types/         - TypeScript types
     
@@ -177,6 +193,12 @@ data/
 - `GET /location/current` - current location
 - `GET /location/history` - location history
 
+**Onboarding:**
+- `GET /onboarding/status` - check if completed
+- `POST /onboarding/voice-step` - process conversation
+- `POST /onboarding/save` - save preferences
+- `POST /onboarding/reset` - reset for testing
+
 **RAG (memory) endpoints:**
 - `GET /rag/stats` - see what's indexed
 - `GET /rag/search` - search past events
@@ -187,9 +209,9 @@ data/
 
 Full API documentation is at http://localhost:8000/docs when running.
 
-## The 8 Scenarios
+## The 9 Scenarios
 
-The system detects these situations automatically:
+The system uses AI to detect these situations:
 
 1. **Commuting** - travel planning and music
 2. **At Work** - productivity and focus
@@ -199,10 +221,11 @@ The system detects these situations automatically:
 6. **Workout** - fitness and motivation
 7. **Before Sleep** - wind down routine
 8. **Weekend** - relaxation and activities
+9. **General** - catch-all for unclear situations
 
-You can also manually pick a scenario in the UI if auto-detection gets it wrong.
+The LLM analyzes your time, location, and calendar together. For example, "Tuesday 8:30am at home with 10am standup" is intelligently predicted as commuting, while "Saturday 8:30am with no events" might be workout or weekend leisure.
 
-**Note**: Manual scenario selection is included to demonstrate the system's capabilities by simulating different times and contexts. This lets you quickly see how the AI responds in various situations (commute, work, social, etc.) without waiting for those times or changing your actual location. Just select a scenario from the UI and the system will generate appropriate insights as if you were actually in that situation.
+**Note:** You can also manually pick a scenario in the UI to test different situations.
 
 ## How the Agents Work
 
@@ -342,13 +365,14 @@ docker-compose up -d --build
 ```bash
 # Check what's using the ports
 lsof -i :8000  # backend
-lsof -i :3000  # frontend
+lsof -i :5173  # frontend
 ```
 
 ## Notes
 
-- The system works offline (except for Gemini API calls)
-- All data stays local
+- Voice onboarding requires microphone access (Chrome/Safari work best)
+- The system works offline except for Gemini API calls
+- All data stays local - voice processed in real-time, not stored
 - You can run it without Docker if you prefer
 - First build takes a few minutes, then it's fast
 - ChromaDB data persists in a Docker volume

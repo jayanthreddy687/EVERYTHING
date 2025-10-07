@@ -202,6 +202,34 @@ export interface FeedbackResponse {
   average_score?: number;
 }
 
+// Onboarding Types
+export interface ConversationMessage {
+  role: 'system' | 'user';
+  text: string;
+  timestamp: string;
+}
+
+export interface OnboardingPreferences {
+  name: string | null;
+  priorities: string[];
+  work_stress_areas: string[];
+  health_goals: string[];
+  social_preferences: {
+    style: string;
+  };
+  financial_goals: string[];
+  communication_style: string;
+  agent_weights: Record<string, number>;
+  raw_conversation: ConversationMessage[];
+}
+
+export interface VoiceOnboardingStepResponse {
+  next_question: string;
+  analysis: string;
+  preferences_extracted: any;
+  is_complete: boolean;
+}
+
 // Component Props Types
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'secondary' | 'ghost' | 'outline';
