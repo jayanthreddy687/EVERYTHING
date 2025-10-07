@@ -43,3 +43,43 @@ class AnalysisResponse(BaseModel):
     insights_generated: int
     using_llm: bool
     timestamp: str
+
+
+class ConversationMessage(BaseModel):
+    """Single message in onboarding conversation"""
+    role: str  # 'system' or 'user'
+    text: str
+    timestamp: str
+
+
+class VoiceOnboardingRequest(BaseModel):
+    """Request for voice onboarding step"""
+    conversation_history: List[ConversationMessage]
+    current_answer: str
+
+
+class VoiceOnboardingResponse(BaseModel):
+    """Response from voice onboarding step"""
+    next_question: str  # Next question to ask, or 'ONBOARDING_COMPLETE'
+    analysis: str  # What was learned from user's answer
+    preferences_extracted: Dict[str, Any]
+    is_complete: bool
+
+
+class OnboardingPreferences(BaseModel):
+    """User preferences collected during onboarding"""
+    name: Optional[str] = None
+    priorities: List[str] = []  # e.g., ['productivity', 'wellness', 'social']
+    work_stress_areas: List[str] = []  # e.g., ['meetings', 'focus', 'deadlines']
+    health_goals: List[str] = []  # e.g., ['sleep', 'exercise', 'stress']
+    social_preferences: Dict[str, Any] = {}
+    financial_goals: List[str] = []
+    communication_style: str = "balanced"  # 'brief', 'detailed', 'balanced'
+    agent_weights: Dict[str, float] = {}  # Agent priority weights
+    raw_conversation: List[ConversationMessage] = []
+
+
+class OnboardingStatus(BaseModel):
+    """Status of user's onboarding"""
+    completed: bool
+    preferences: Optional[OnboardingPreferences] = None

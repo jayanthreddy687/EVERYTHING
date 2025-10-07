@@ -1,5 +1,9 @@
 """EVERYTHING AI Agent System - Main API Server"""
 import logging
+import json
+import os
+from pathlib import Path
+from datetime import datetime
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +20,13 @@ from config import (
     LOG_LEVEL,
     LOG_FORMAT
 )
-from models import AnalysisRequest
+from models import (
+    AnalysisRequest,
+    VoiceOnboardingRequest,
+    VoiceOnboardingResponse,
+    OnboardingPreferences,
+    OnboardingStatus
+)
 from orchestrator import AgentOrchestrator
 from services import data_loader
 
@@ -56,6 +66,12 @@ app.add_middleware(
 
 # Initialize orchestrator
 orchestrator = AgentOrchestrator()
+
+# Onboarding data path
+if os.path.exists("/app/data"):
+    ONBOARDING_FILE = Path("/app/data/user_onboarding.json")
+else:
+    ONBOARDING_FILE = Path(__file__).parent.parent / "data" / "user_onboarding.json"
 
 # Index data into RAG on startup
 logger.info("📚 Indexing data into RAG vector store...")
@@ -350,6 +366,213 @@ def get_feedback_stats():
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+# ============================================================================
+# ONBOARDING ENDPOINTS
+# ============================================================================
+
+@app.get("/onboarding/status", tags=["Onboarding"])
+def get_onboarding_status():
+    """Check if user has completed onboarding"""
+    try:
+        if ONBOARDING_FILE.exists():
+            with open(ONBOARDING_FILE, 'r') as f:
+                data = json.load(f)
+            return OnboardingStatus(completed=True, preferences=OnboardingPreferences(**data))
+        else:
+            return OnboardingStatus(completed=False, preferences=None)
+    except Exception as e:
+        logger.error(f"❌ Failed to check onboarding status: {e}")
+        return OnboardingStatus(completed=False, preferences=None)
+
+
+@app.post("/onboarding/voice-step", tags=["Onboarding"])
+async def voice_onboarding_step(request: VoiceOnboardingRequest):
+    """
+    Process one step of voice onboarding conversation.
+    Uses Gemini to intelligently ask follow-up questions and extract preferences.
+    """
+    logger.info("🎙️ Voice onboarding step received")
+    logger.info(f"   Conversation history: {len(request.conversation_history)} messages")
+    logger.info(f"   User answer: {request.current_answer[:100]}...")
+    
+    try:
+        # Count user responses (not system messages)
+        user_responses = [msg for msg in request.conversation_history if msg.role == "user"]
+        num_user_responses = len(user_responses)
+        
+        logger.info(f"   User has responded {num_user_responses} times")
+        
+        # Force completion after 4 user responses (max 5 questions including this one)
+        force_complete = num_user_responses >= 5
+        
+        # Build conversation context for Gemini
+        conversation_text = "\n".join([
+            f"{msg.role.upper()}: {msg.text}" 
+            for msg in request.conversation_history
+        ])
+        
+        # Intelligent prompt for Gemini
+        completion_directive = ""
+        if force_complete:
+            completion_directive = "\n\n⚠️ IMPORTANT: This is the final question. You MUST output ONBOARDING_COMPLETE now. The user has already provided enough information."
+        elif num_user_responses >= 2:
+            completion_directive = "\n\n⚠️ You've asked several questions already. If the user has mentioned their main priorities, complete the onboarding by outputting ONBOARDING_COMPLETE."
+        
+        prompt = f"""You are an onboarding assistant for EVERYTHING AI - a personal AI system with 7 specialized agents.
+
+Your goal: Learn about the user's priorities and preferences through a BRIEF conversation (3-4 questions maximum).
+
+Conversation so far ({num_user_responses} user responses):
+{conversation_text}
+
+User just said: "{request.current_answer}"
+{completion_directive}
+
+CRITICAL RULES:
+1. If user has mentioned their main priority area (work, health, social, finance), ask ONE follow-up question, then COMPLETE
+2. After 3 user responses, you MUST complete onboarding
+3. Don't repeat questions or ask about areas they haven't mentioned
+4. Don't ask "what matters to you" again if they already answered
+
+ANALYZE their answer:
+- What priorities did they mention? (work/productivity, health/wellness, social, finances)
+- What specific issues? (e.g., work: meetings, stress; health: sleep, exercise)
+- Is this enough to personalize their experience? (YES after 2-3 responses)
+
+Format your response EXACTLY like this:
+
+ANALYSIS: [What you learned - be specific about priorities identified]
+PREFERENCES: {{"priorities": ["work", "wellness", etc], "work_stress": ["meetings", "focus"], "health_goals": ["sleep", "exercise"], "social_style": "balanced", "financial_interest": "low"}}
+NEXT_QUESTION: ONBOARDING_COMPLETE OR [ONE specific follow-up question about what they just mentioned]
+REASONING: [Why completing OR why this ONE follow-up is needed]"""
+
+        # Get Gemini's response
+        response = await orchestrator.llm.analyze(prompt)
+        
+        logger.debug(f"   Gemini response: {response[:200]}...")
+        
+        # Parse response
+        analysis = ""
+        preferences = {}
+        next_question = ""
+        is_complete = False
+        
+        for line in response.split('\n'):
+            line = line.strip()
+            if line.startswith("ANALYSIS:"):
+                analysis = line.replace("ANALYSIS:", "").strip()
+            elif line.startswith("PREFERENCES:"):
+                pref_str = line.replace("PREFERENCES:", "").strip()
+                try:
+                    preferences = json.loads(pref_str)
+                except:
+                    preferences = {}
+            elif line.startswith("NEXT_QUESTION:"):
+                next_question = line.replace("NEXT_QUESTION:", "").strip()
+                if "ONBOARDING_COMPLETE" in next_question:
+                    is_complete = True
+                    next_question = "ONBOARDING_COMPLETE"
+            elif line.startswith("REASONING:"):
+                reasoning = line.replace("REASONING:", "").strip()
+                logger.info(f"   Reasoning: {reasoning}")
+        
+        # If no next question was parsed, generate a default
+        if not next_question:
+            next_question = "Tell me more about what you'd like help with."
+        
+        # HARD LIMIT: Force completion after 4 user responses
+        if force_complete and not is_complete:
+            logger.info("   ⚠️ FORCING COMPLETION - Maximum questions reached")
+            is_complete = True
+            next_question = "ONBOARDING_COMPLETE"
+            if not analysis:
+                analysis = "User has provided sufficient information about their priorities"
+        
+        logger.info(f"   Analysis: {analysis}")
+        logger.info(f"   Preferences extracted: {preferences}")
+        logger.info(f"   Next question: {next_question}")
+        logger.info(f"   Complete: {is_complete}")
+        
+        return VoiceOnboardingResponse(
+            next_question=next_question,
+            analysis=analysis,
+            preferences_extracted=preferences,
+            is_complete=is_complete
+        )
+    
+    except Exception as e:
+        logger.error(f"❌ Voice onboarding step failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/onboarding/save", tags=["Onboarding"])
+async def save_onboarding(preferences: OnboardingPreferences):
+    """
+    Save user onboarding preferences and calculate agent weights.
+    """
+    logger.info("💾 Saving onboarding preferences...")
+    
+    try:
+        # Calculate agent weights based on priorities
+        agent_weights = {
+            "context": 1.0,  # Always active
+            "emotional": 1.0  # Always active
+        }
+        
+        # Weight agents based on user priorities
+        for priority in preferences.priorities:
+            priority_lower = priority.lower()
+            
+            if any(w in priority_lower for w in ['work', 'productivity', 'focus', 'meeting']):
+                agent_weights["productivity"] = agent_weights.get("productivity", 1.0) + 0.5
+            
+            if any(w in priority_lower for w in ['health', 'wellness', 'sleep', 'fitness', 'exercise']):
+                agent_weights["wellness"] = agent_weights.get("wellness", 1.0) + 0.5
+            
+            if any(w in priority_lower for w in ['social', 'friends', 'connection', 'people']):
+                agent_weights["social"] = agent_weights.get("social", 1.0) + 0.5
+            
+            if any(w in priority_lower for w in ['money', 'financial', 'saving', 'budget', 'spending']):
+                agent_weights["financial"] = agent_weights.get("financial", 1.0) + 0.5
+        
+        # Add weights for music/content if mentioned
+        if preferences.health_goals or preferences.work_stress_areas:
+            agent_weights["content"] = agent_weights.get("content", 1.0) + 0.3
+        
+        preferences.agent_weights = agent_weights
+        
+        # Save to file
+        ONBOARDING_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(ONBOARDING_FILE, 'w') as f:
+            json.dump(preferences.dict(), f, indent=2)
+        
+        logger.info("✅ Onboarding preferences saved")
+        logger.info(f"   Priorities: {preferences.priorities}")
+        logger.info(f"   Agent weights: {agent_weights}")
+        
+        return {
+            "status": "saved",
+            "preferences": preferences,
+            "message": "Your preferences have been saved. EVERYTHING is now personalized for you!"
+        }
+    
+    except Exception as e:
+        logger.error(f"❌ Failed to save onboarding: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/onboarding/reset", tags=["Onboarding"])
+def reset_onboarding():
+    """Reset onboarding (for testing)"""
+    try:
+        if ONBOARDING_FILE.exists():
+            os.remove(ONBOARDING_FILE)
+        return {"status": "reset", "message": "Onboarding has been reset"}
+    except Exception as e:
+        logger.error(f"❌ Failed to reset onboarding: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

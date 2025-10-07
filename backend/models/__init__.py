@@ -5,12 +5,22 @@ from .schemas import (
     AgentInsight,
     AnalysisRequest,
     AnalysisResponse,
-    ScenarioInfo
+    ScenarioInfo,
+    ConversationMessage,
+    VoiceOnboardingRequest,
+    VoiceOnboardingResponse,
+    OnboardingPreferences,
+    OnboardingStatus
 )
 
 __all__ = [
     "AgentInsight",
     "AnalysisRequest",
     "AnalysisResponse",
-    "ScenarioInfo"
+    "ScenarioInfo",
+    "ConversationMessage",
+    "VoiceOnboardingRequest",
+    "VoiceOnboardingResponse",
+    "OnboardingPreferences",
+    "OnboardingStatus"
 ]

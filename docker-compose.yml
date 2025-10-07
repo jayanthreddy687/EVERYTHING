@@ -14,8 +14,8 @@ services:
       - API_HOST=0.0.0.0
       - API_PORT=8000
     volumes:
-      # Mount data directory
-      - ./data:/app/data:ro
+      # Mount data directory (read-write for onboarding)
+      - ./data:/app/data
       # Persist ChromaDB
       - chroma_data:/app/chroma_db
     networks:

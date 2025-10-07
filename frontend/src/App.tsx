@@ -5,6 +5,7 @@ import { ScenarioSelector } from './features/scenarios/ScenarioSelector';
 import { NowView } from './features/now/NowView';
 import { AgendaView } from './features/agenda/AgendaView';
 import { ProfileView } from './features/profile/ProfileView';
+import { VoiceOnboardingView } from './features/onboarding/VoiceOnboardingView';
 import { LoadingState } from './components/LoadingState';
 import { ErrorBanner } from './components/ErrorBanner';
 import { useAgentInsights } from './hooks/useAgentInsights';
@@ -18,6 +19,8 @@ import type { FeedbackAction } from './types';
 function App() {
   const [activeTab, setActiveTab] = useState<TabType>(APP_CONFIG.DEFAULT_TAB as TabType);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   // Fetch user data and calendar from backend
   const { 
@@ -38,12 +41,29 @@ function App() {
     fetchInsights
   } = useAgentInsights(userData, calendarData);
 
+  // Check onboarding status on mount
+  useEffect(() => {
+    async function checkOnboarding() {
+      try {
+        const status = await apiService.getOnboardingStatus();
+        setOnboardingComplete(status.completed);
+      } catch (error) {
+        console.error('Failed to check onboarding status:', error);
+        // Default to completed if check fails (graceful degradation)
+        setOnboardingComplete(true);
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    }
+    checkOnboarding();
+  }, []);
+
   // Fetch insights when data is loaded and scenario changes
   useEffect(() => {
-    if (userData && calendarData.length > 0) {
+    if (userData && calendarData.length > 0 && onboardingComplete) {
       fetchInsights(selectedScenario);
     }
-  }, [selectedScenario, userData, calendarData, fetchInsights]);
+  }, [selectedScenario, userData, calendarData, onboardingComplete, fetchInsights]);
 
   // Handle scenario selection
   function handleScenarioSelect(scenarioId: string | null): void {
@@ -103,6 +123,29 @@ function App() {
   }): Promise<void> {
     // Record negative feedback
     await recordFeedback(item, 'dismissed');
+  }
+
+  // Handle onboarding completion
+  function handleOnboardingComplete() {
+    setOnboardingComplete(true);
+    // Trigger insights fetch after onboarding
+    if (userData && calendarData.length > 0) {
+      fetchInsights(selectedScenario);
+    }
+  }
+
+  // Show loading state while checking onboarding
+  if (checkingOnboarding) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white p-6 flex items-center justify-center">
+        <LoadingState message="Loading..." />
+      </div>
+    );
+  }
+
+  // Show voice onboarding if not completed
+  if (onboardingComplete === false) {
+    return <VoiceOnboardingView onComplete={handleOnboardingComplete} />;
   }
 
   // Show loading state while fetching user data
