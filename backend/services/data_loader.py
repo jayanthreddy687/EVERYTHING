@@ -30,10 +30,10 @@ class DataLoaderService:
             file_path = self.data_dir / "user_profile.json"
             with open(file_path, 'r') as f:
                 data = json.load(f)
-            logger.info("✅ Loaded user profile")
+            logger.info(" Loaded user profile")
             return data
         except Exception as e:
-            logger.error(f"❌ Failed to load user profile: {e}")
+            logger.error(f" Failed to load user profile: {e}")
             return {}
     
     def load_spotify_playlists(self) -> Dict[str, Any]:
@@ -42,10 +42,10 @@ class DataLoaderService:
             file_path = self.data_dir / "spotify_playlists.json"
             with open(file_path, 'r') as f:
                 data = json.load(f)
-            logger.info("✅ Loaded Spotify playlists")
+            logger.info(" Loaded Spotify playlists")
             return data
         except Exception as e:
-            logger.error(f"❌ Failed to load Spotify playlists: {e}")
+            logger.error(f" Failed to load Spotify playlists: {e}")
             return {"playlists": []}
     
     def load_social_media(self) -> Dict[str, Any]:
@@ -54,10 +54,10 @@ class DataLoaderService:
             file_path = self.data_dir / "social_media.json"
             with open(file_path, 'r') as f:
                 data = json.load(f)
-            logger.info("✅ Loaded social media data")
+            logger.info(" Loaded social media data")
             return data
         except Exception as e:
-            logger.error(f"❌ Failed to load social media: {e}")
+            logger.error(f" Failed to load social media: {e}")
             return {}
     
     def load_calendar_events(self) -> List[Dict[str, Any]]:
@@ -77,10 +77,10 @@ class DataLoaderService:
                         "location": row["location"]
                     })
             
-            logger.info(f"✅ Loaded {len(events)} calendar events")
+            logger.info(f" Loaded {len(events)} calendar events")
             return events
         except Exception as e:
-            logger.error(f"❌ Failed to load calendar events: {e}")
+            logger.error(f" Failed to load calendar events: {e}")
             return []
     
     def load_location_history(self) -> List[Dict[str, Any]]:
@@ -99,10 +99,10 @@ class DataLoaderService:
                         "location": row["location"]
                     })
             
-            logger.info(f"✅ Loaded {len(locations)} location points")
+            logger.info(f"Loaded {len(locations)} location points")
             return locations
         except Exception as e:
-            logger.error(f"❌ Failed to load location history: {e}")
+            logger.error(f" Failed to load location history: {e}")
             return []
     
     def get_current_location(self) -> Dict[str, Any]:

@@ -5,8 +5,6 @@ import os
 import asyncio
 import logging
 
-# Suppress gRPC verbosity
-os.environ['GRPC_VERBOSITY'] = 'ERROR'
 
 try:
     import google.generativeai as genai
@@ -39,28 +37,28 @@ class LLMService:
                 generation_config=GEMINI_CONFIG
             )
             
-            logger.info(f"✅ LLM Service initialized with Google Gemini")
+            logger.info(f" LLM Service initialized with Google Gemini")
             logger.info(f"   Model: {GEMINI_MODEL}")
             logger.info(f"   Provider: Google AI")
         elif self.gemini_key and not GEMINI_AVAILABLE:
             self.provider = "fallback"
             self.use_llm = False
-            logger.warning("⚠️  Gemini API key found but google-generativeai not installed")
+            logger.warning(" Gemini API key found but google-generativeai not installed")
             logger.warning("   Install with: pip install google-generativeai")
         else:
             self.provider = "fallback"
             self.use_llm = False
-            logger.warning("⚠️  LLM Service initialized in FALLBACK mode (no API key)")
+            logger.warning(" LLM Service initialized in FALLBACK mode (no API key)")
             logger.warning("   Set GEMINI_API_KEY environment variable to use real LLM")
     
     async def analyze(self, prompt: str, max_tokens: int = 400) -> str:
         """Send prompt to LLM and get response"""
         
         if not self.use_llm:
-            logger.info("🔄 Using FALLBACK response (no LLM API key)")
+            logger.info("Using FALLBACK response (no LLM API key)")
             return self._generate_fallback(prompt)
         
-        logger.info(f"🤖 Calling Gemini API...")
+        logger.info(f"Calling Gemini API...")
         logger.debug(f"   Prompt (first 200 chars): {prompt[:200]}...")
         
         try:
@@ -71,13 +69,13 @@ class LLMService:
             )
             
             llm_output = response.text
-            logger.info("✅ Gemini Response received successfully")
+            logger.info(" Gemini Response received successfully")
             logger.debug(f"   LLM Output (first 300 chars): {llm_output[:300]}...")
             return llm_output
                 
         except Exception as e:
-            logger.error(f"❌ Gemini API Exception: {str(e)}")
-            logger.info("🔄 Falling back to hardcoded response")
+            logger.error(f" Gemini API Exception: {str(e)}")
+            logger.info(" Falling back to hardcoded response")
         
         return self._generate_fallback(prompt)
     

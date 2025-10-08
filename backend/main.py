@@ -75,7 +75,7 @@ else:
     ONBOARDING_FILE = Path(__file__).parent.parent / "data" / "user_onboarding.json"
 
 # Index data into RAG on startup
-logger.info("📚 Indexing data into RAG vector store...")
+logger.info(" Indexing data into RAG vector store...")
 try:
     # Load calendar and location data
     calendar_events = data_loader.load_calendar_events()
@@ -92,9 +92,6 @@ except Exception as e:
     logger.error(f"RAG indexing failed: {e}")
     logger.warning("System will continue without RAG capabilities")
 
-logger.info("=" * 70)
-logger.info(f"🚀 {API_TITLE} v{API_VERSION}")
-logger.info("=" * 70)
 logger.info(f"{len(orchestrator.agents)} agents loaded:")
 for agent in orchestrator.agents:
     logger.info(f"   • {agent.name}")
@@ -352,11 +349,6 @@ def get_feedback_stats():
         }
     except Exception as e:
         return {"error": str(e)}
-
-
-# ============================================================================
-# ONBOARDING ENDPOINTS
-# ============================================================================
 
 @app.get("/onboarding/status", tags=["Onboarding"])
 def get_onboarding_status():

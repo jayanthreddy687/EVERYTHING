@@ -67,7 +67,7 @@ class AgentOrchestrator:
         user = request.user_data.get('name', 'User')
         location = request.current_context.get('location', {}).get('name', 'Unknown')
         
-        logger.info(f"→ {user} | {location} | {len(request.calendar_events)} events")
+        logger.info(f" {user} | {location} | {len(request.calendar_events)} events")
         
         scenario = await self.context_detector.detect_scenario(request)
         
@@ -94,7 +94,7 @@ class AgentOrchestrator:
         insights.sort(key=lambda x: (PRIORITY_MAP.get(x.priority, 2), -x.confidence))
         
         duration = (datetime.now() - start).total_seconds()
-        logger.info(f"✓ {duration:.2f}s | {scenario['type']} | {len(insights)} insights")
+        logger.info(f"{duration:.2f}s | {scenario['type']} | {len(insights)} insights")
         
         return {
             "insights": insights[:MAX_INSIGHTS_PER_REQUEST],

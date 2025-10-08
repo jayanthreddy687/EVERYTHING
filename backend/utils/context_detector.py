@@ -278,7 +278,7 @@ class ContextDetector:
                 }
             }
         
-        logger.info(f"🎯 SCENARIO DETECTED: {scenario['type']}")
+        logger.info(f" SCENARIO DETECTED: {scenario['type']}")
         logger.info(f"   Description: {scenario['description']}")
         logger.info(f"   Confidence: {scenario['confidence']}")
         logger.info(f"   Agents to trigger: {', '.join(scenario['triggers'])}")

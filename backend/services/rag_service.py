@@ -45,14 +45,14 @@ class RAGService:
         # In-memory feedback scores for quick lookup
         self.feedback_scores = {}  # {query_pattern: score}
         
-        logger.info("✅ RAG Service initialized with ChromaDB")
+        logger.info(" RAG Service initialized with ChromaDB")
         logger.info(f"   Embedding model: all-MiniLM-L6-v2")
         logger.info(f"   Collections: calendar_events, location_history, insight_feedback")
     
     def index_calendar_events(self, events: List[Dict[str, Any]]):
         """Index calendar events for semantic search"""
         if not events:
-            logger.warning("⚠️  No calendar events to index")
+            logger.warning("  No calendar events to index")
             return
         
         try:
@@ -83,15 +83,15 @@ class RAGService:
                 metadatas=metadatas
             )
             
-            logger.info(f"✅ Indexed {len(events)} calendar events into vector store")
+            logger.info(f"Indexed {len(events)} calendar events into vector store")
         
         except Exception as e:
-            logger.error(f"❌ Failed to index calendar events: {e}")
+            logger.error(f" Failed to index calendar events: {e}")
     
     def index_location_history(self, locations: List[Dict[str, Any]]):
         """Index location history for pattern detection"""
         if not locations:
-            logger.warning("⚠️  No location history to index")
+            logger.warning(" No location history to index")
             return
         
         try:
@@ -117,10 +117,10 @@ class RAGService:
                 metadatas=metadatas
             )
             
-            logger.info(f"✅ Indexed {len(locations)} location points into vector store")
+            logger.info(f" Indexed {len(locations)} location points into vector store")
         
         except Exception as e:
-            logger.error(f"❌ Failed to index location history: {e}")
+            logger.error(f" Failed to index location history: {e}")
     
     def retrieve_similar_events(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """
@@ -137,13 +137,13 @@ class RAGService:
             # Return the metadata (full event details)
             if results and results['metadatas'] and len(results['metadatas']) > 0:
                 similar_events = results['metadatas'][0]
-                logger.info(f"🔍 Found {len(similar_events)} similar events for query: '{query}'")
+                logger.info(f" Found {len(similar_events)} similar events for query: '{query}'")
                 return similar_events
             
             return []
         
         except Exception as e:
-            logger.error(f"❌ RAG retrieval failed: {e}")
+            logger.error(f"RAG retrieval failed: {e}")
             return []
     
     def retrieve_similar_locations(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
@@ -156,13 +156,13 @@ class RAGService:
             
             if results and results['metadatas'] and len(results['metadatas']) > 0:
                 similar_locs = results['metadatas'][0]
-                logger.info(f"🔍 Found {len(similar_locs)} similar locations for query: '{query}'")
+                logger.info(f" Found {len(similar_locs)} similar locations for query: '{query}'")
                 return similar_locs
             
             return []
         
         except Exception as e:
-            logger.error(f"❌ Location retrieval failed: {e}")
+            logger.error(f"Location retrieval failed: {e}")
             return []
     
     def record_feedback(self, insight_data: Dict[str, Any], user_action: str):
@@ -207,10 +207,10 @@ class RAGService:
                 self.feedback_scores[pattern_key] = []
             self.feedback_scores[pattern_key].append(score)
             
-            logger.info(f"📊 Feedback recorded: {user_action} on {insight_data.get('category')} insight (score: {score})")
+            logger.info(f"Feedback recorded: {user_action} on {insight_data.get('category')} insight (score: {score})")
             
         except Exception as e:
-            logger.error(f"❌ Failed to record feedback: {e}")
+            logger.error(f" Failed to record feedback: {e}")
     
     def get_feedback_score(self, category: str, agent_name: str) -> float:
         """
@@ -275,14 +275,14 @@ class RAGService:
             final_events = [event for _, event in scored_events[:top_k]]
             
             if has_positive_feedback:
-                logger.info(f"🔍 Found {len(final_events)} events (feedback-enhanced)")
+                logger.info(f" Found {len(final_events)} events (feedback-enhanced)")
             else:
-                logger.info(f"🔍 Found {len(final_events)} events for query: '{query}'")
+                logger.info(f" Found {len(final_events)} events for query: '{query}'")
             
             return final_events
             
         except Exception as e:
-            logger.error(f"❌ Feedback-enhanced retrieval failed, falling back to standard: {e}")
+            logger.error(f" Feedback-enhanced retrieval failed, falling back to standard: {e}")
             # Fallback to standard retrieval
             return self.retrieve_similar_events(query, top_k)
     
