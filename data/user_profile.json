@@ -24,27 +24,27 @@
   },
   "previous_notifications": [
     {
-      "date": "2024-05-14",
+      "date": "2025-10-05",
       "time": "17:30",
       "message": "SLACK: Sarah - tomorrow's code review moved to 11am"
     },
     {
-      "date": "2024-05-14",
+      "date": "2025-10-05",
       "time": "20:15",
       "message": "WhatsApp: Tom - pub quiz tomorrow at Crown & Shuttle?"
     },
     {
-      "date": "2024-05-15",
+      "date": "2025-10-06",
       "time": "08:45",
       "message": "CALENDAR: Team standup in 15 mins"
     },
     {
-      "date": "2024-05-15",
+      "date": "2025-10-06",
       "time": "15:30",
       "message": "GITHUB: PR #247 approved, ready to merge"
     },
     {
-      "date": "2024-05-15",
+      "date": "2025-10-06",
       "time": "18:45",
       "message": "CITYMAPPER: 12 min walk to The Ten Bells"
     }
@@ -95,20 +95,20 @@
   "purchases": [
     {
       "item": "Mechanical Keyboard (Cherry MX)",
-      "date": "2024-05-10",
-      "price": "£180",
+      "date": "2025-10-02",
+      "price": "\u00a3180",
       "store": "Amazon"
     },
     {
       "item": "USB-C Hub (because dongles)",
-      "date": "2024-05-12",
-      "price": "£45",
+      "date": "2025-10-04",
+      "price": "\u00a345",
       "store": "Currys"
     },
     {
       "item": "Coffee (oat flat white)",
-      "date": "2024-05-14",
-      "price": "£3.20",
+      "date": "2025-10-05",
+      "price": "\u00a33.20",
       "store": "Monmouth Coffee"
     }
   ],

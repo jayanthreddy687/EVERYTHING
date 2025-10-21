@@ -1,0 +1,22 @@
+{
+  "name": null,
+  "priorities": [],
+  "work_stress_areas": [],
+  "health_goals": [],
+  "social_preferences": {
+    "style": "balanced"
+  },
+  "financial_goals": [],
+  "communication_style": "balanced",
+  "agent_weights": {
+    "context": 1.0,
+    "emotional": 1.0
+  },
+  "raw_conversation": [
+    {
+      "role": "user",
+      "text": "it's mostly work",
+      "timestamp": "2025-10-15T20:37:47.324Z"
+    }
+  ]
+}

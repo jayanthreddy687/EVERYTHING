@@ -1,0 +1,30 @@
+{
+  "name": null,
+  "priorities": [
+    "work"
+  ],
+  "work_stress_areas": [],
+  "health_goals": [],
+  "social_preferences": {
+    "style": "balanced"
+  },
+  "financial_goals": [],
+  "communication_style": "balanced",
+  "agent_weights": {
+    "context": 1.0,
+    "emotional": 1.0,
+    "productivity": 1.5
+  },
+  "raw_conversation": [
+    {
+      "role": "user",
+      "text": "it's mostly work",
+      "timestamp": "2025-10-07T21:25:06.077Z"
+    },
+    {
+      "role": "user",
+      "text": "staying focused",
+      "timestamp": "2025-10-07T21:25:19.015Z"
+    }
+  ]
+}
