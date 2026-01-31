@@ -5,6 +5,15 @@ export const API_CONFIG = {
   RETRY_ATTEMPTS: 3
 } as const;
 
+// For Cloud Shell deployment, we need to handle the external URL
+export const getApiBaseUrl = () => {
+  // Check if we're in Cloud Shell environment
+  if (import.meta.env.VITE_CLOUD_SHELL_URL) {
+    return import.meta.env.VITE_CLOUD_SHELL_URL;
+  }
+  return API_CONFIG.BASE_URL;
+};
+
 export const APP_CONFIG = {
   APP_NAME: "EVERYTHING",
   APP_TAGLINE: "AI Agent Intelligence",

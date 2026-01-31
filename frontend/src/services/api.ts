@@ -1,4 +1,4 @@
-import { API_CONFIG } from '../constants/config';
+import { getApiBaseUrl } from '../constants/config';
 import type {
   AnalysisRequest,
   AnalysisResponse,
@@ -16,8 +16,8 @@ import type {
 class ApiService {
   private baseURL: string;
 
-  constructor(baseURL: string = API_CONFIG.BASE_URL) {
-    this.baseURL = baseURL;
+  constructor(baseURL?: string) {
+    this.baseURL = baseURL || getApiBaseUrl();
   }
 
   /**
